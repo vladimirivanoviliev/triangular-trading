@@ -1,0 +1,18 @@
+{
+  "name": "triangular-trading",
+  "version": "0.0.1",
+  "main": "index.js",
+  "dependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.0",
+    "express": "latest",
+    "request": "latest",
+    "webworker-threads": "^0.7.13"
+  },
+  "scripts": {
+    "test": "babel-node --inspect-brk index.js",
+    "start": "babel-node index.js"
+  },
+  "author": "Vladimir Iliev, Daniel Karadachki",
+  "license": "GPL-3.0"
+}
