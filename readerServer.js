@@ -1,18 +1,16 @@
-import BittrexReader from './readers/bittrex';
-import ThreadPool from './threadPool';
+//import Reader from './readers/bittrex';
+import Reader from './readers/binannce';
+//import ThreadPool from './threadPool';
+import DataProcessor from './dataProcessor';
 
-//Interval here should be increased if api calls increase (interval per API?)
-//For example Kraken allows 1 request per 3 seconds - that why if you have 4 api calls
-//you need to increase this to 12000ms to avoid block.
 const DEFAULT_INTERVAL_MS = 2000;
 
 export default class ReaderServer {
     constructor() {
-        this._reader = new BittrexReader();
+        this._reader = new Reader();
         this._exited = false;
         this._marketData;
-
-        this._threadPool = new ThreadPool(4, (summary) => { this._onSummaryProcessed(summary); });
+        // this._threadPool = new ThreadPool(4, (summary) => { this._onSummaryProcessed(summary); });
 
 
         //message queue
@@ -48,7 +46,7 @@ export default class ReaderServer {
                 this.processMarketData(marketDataResponse);
 
                 this._readerInterval = setInterval(() => {
-                    this._reader.readSummaries(this.processSummaryData);
+                    this._reader.readSummaries((data) => {this.processSummaryData(data);});
                 }, DEFAULT_INTERVAL_MS);
             }
         });
@@ -61,7 +59,8 @@ export default class ReaderServer {
 
     processMarketData(marketResponse) {
         console.log('>market data saved..');
-        this._marketData = marketResponse;
+
+        this._dataProcessor = new DataProcessor(marketResponse);
     }
 
     processSummaryData(summaryResponse, error) {
@@ -69,12 +68,16 @@ export default class ReaderServer {
             console.log('>>>MARKET SUMMARY ERROR: ', error);
             return;
         }
-debugger;
-        console.log('>market summary saved..');
 
-        this._threadPool.addWork({
-            summaries: summaryResponse,
-            markets: this._marketData
-        });
+        const processedData = this._dataProcessor.processSummaries(summaryResponse);
+
+        console.log('>market summary calculated..', processedData.map(item => item.path + ' ' + item.rate + ' ' + item.rateWithFee).join('\n'));
+        console.log(processedData.length);
+
+
+        // this._threadPool.addWork({
+        //     summaries: summaryResponse,
+        //     markets: this._marketData
+        // });
     }
 }

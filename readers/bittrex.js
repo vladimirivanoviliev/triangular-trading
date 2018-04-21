@@ -3,9 +3,9 @@ import request from 'request';
 const GET_MARKETS_API_URL = 'https://bittrex.com/api/v1.1/public/getmarkets';
 const GET_MARKET_SUMMARY_API_URL = 'https://bittrex.com/api/v1.1/public/getmarketsummaries';
 
-export default class ReaderServer {
+export default class BittrexReader {
     _remoteRequest(url, callback) {
-        request(url, (error, response) => {
+        request(url, (error, response = {}) => {
             const handledServerError = response.success ? undefined : response.message;
 
             callback((JSON.parse(response.body) || {}).result, error || handledServerError);
