@@ -1,15 +1,15 @@
 import Worker from 'webworker-threads';
-import dataProcessor from 'dataProcessor';
+import dataProcessor from './dataProcessor';
 
 export default class DataProcessorWorker {
     constructor(options) {
         const {id, onMessage} = options;
 
-        this._worker = new Worker(this._workerCode);
-
-        this._worker.onmessage = (message) => {onMessage(message, id)};
-
-        this._id = id;
+        // this._worker = new Worker(this._workerCode);
+        //
+        // this._worker.onmessage = (message) => {onMessage(message, id)};
+        //
+        // this._id = id;
     }
 
     _workerCode () {
@@ -19,7 +19,7 @@ export default class DataProcessorWorker {
             //TODO: SHOULD BE PURE FUNCTION
             //TODO: WORKER CODE HERE
             //dataProcessor(receivedMessage);
-
+debugger;
             setTimeout(() => {
                 postMessage(receivedMessage);
             }, 1000);

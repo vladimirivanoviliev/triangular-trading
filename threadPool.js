@@ -1,4 +1,4 @@
-import DataProcessorWorker from 'dataProcessorWorker';
+import DataProcessorWorker from './dataProcessorWorker';
 
 export default class ThreadPool {
     constructor(numberOfThreads, onWorkDone) {

@@ -1,5 +1,5 @@
 import BittrexReader from './readers/bittrex';
-import ThreadPool from 'threadPool';
+import ThreadPool from './threadPool';
 
 //Interval here should be increased if api calls increase (interval per API?)
 //For example Kraken allows 1 request per 3 seconds - that why if you have 4 api calls
@@ -69,7 +69,7 @@ export default class ReaderServer {
             console.log('>>>MARKET SUMMARY ERROR: ', error);
             return;
         }
-
+debugger;
         console.log('>market summary saved..');
 
         this._threadPool.addWork({

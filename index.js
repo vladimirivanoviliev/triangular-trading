@@ -4,4 +4,7 @@ import ReaderServer from './readerServer';
 
 //TODO: read markets only once
 //TODO: than start the regular reader at 2 seconds interval
-new ReaderServer();
+const reader = new ReaderServer();
+
+reader.start();
+
