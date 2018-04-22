@@ -60,7 +60,9 @@ export default class ReaderServer {
     processMarketData(marketResponse) {
         console.log('>market data saved..');
 
-        this._dataProcessor = new DataProcessor(marketResponse);
+        this._dataProcessor = new DataProcessor(marketResponse, {
+            fee: Reader.fee
+        });
     }
 
     processSummaryData(summaryResponse, error) {
@@ -71,7 +73,8 @@ export default class ReaderServer {
 
         const processedData = this._dataProcessor.processSummaries(summaryResponse);
 
-        console.log('>market summary calculated..', processedData.map(item => item.path + ' ' + item.rate + ' ' + item.rateWithFee).join('\n'));
+        console.log('>market summary calculated..')
+        console.log(processedData.map(item => item.path + ' ' + item.rate + ' ' + item.rateWithFee).join('\n'));
         console.log(processedData.length);
 
 

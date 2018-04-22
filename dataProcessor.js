@@ -7,28 +7,24 @@ function mapSummaries(summaries) {
     return result;
 }
 
-function findPaths(current, to, currentPath, currencies, allPaths, level) {
-    if (level > 4) {
-        return;
-    }
+function findPaths(to, currencies, allPaths) {
+    const paths = [{ currency: to, path: [to] }];
+    while (paths.length) {
+        const { currency, path, markets } = paths.pop();
 
-    for (let currency in currencies[current]) {
-        if (currency === to && level > 0) {
-            allPaths.push({
-                path: currentPath.path + ',' + to,
-                markets: currentPath.markets + ',' + currencies[current][currency]
-            });
-            continue;
-        }
-
-        if (!currentPath.visited[currency]) {
-            findPaths(currency, to, {
-                path: currentPath.path + ',' + currency,
-                markets: (currentPath.markets ? currentPath.markets + `,` : '') + currencies[current][currency],
-                visited: Object.assign({}, currentPath.visited, {
-                    [currency]: true
-                })
-            }, currencies, allPaths, level + 1);
+        for (let next in currencies[currency]) {
+            if (next === to) {
+                allPaths.push({
+                    path: path.concat(next).join(','),
+                    markets: markets + ',' + currencies[currency][next]
+                });
+            } else if (path.indexOf(next) === -1) {
+                paths.push({
+                    currency: next,
+                    path: path.concat(next),
+                    markets: (markets ? markets + ',' : '') + currencies[currency][next]
+                });
+            }
         }
     }
 }
@@ -61,15 +57,14 @@ function groupCurrencies(markets, summaries) {
 
 const descendingComparer = (a, b) => b.rate - a.rate;
 
-//TODO: Per Exchange!!
-const FEE = 0.0005; ///0.0025
 
 class DataProcessor {
-    constructor(markets, startCurrencies) {
-        this.startCurrencies = startCurrencies;
-        this.markets = markets
+    constructor(markets, options = {}) {
+        this.startCurrencies = options.startCurrencies;
+        this.fee = options.fee;
+        this.markets = markets;
         this.initPaths();
-        console.log('>paths calculated..');
+        console.log(`> ${ this.paths.length} paths calculated..`);
     }
 
     initPaths() {
@@ -80,9 +75,7 @@ class DataProcessor {
         const START_CURRENCIES = this.startCurrencies  || Object.keys(currencies);
 
         for (let idx = 0; idx < START_CURRENCIES.length; idx++) {
-            const field = START_CURRENCIES[idx];
-
-            findPaths(field, field, {visited: {[field]: true}, path: field}, currencies, paths, 0);
+            findPaths(START_CURRENCIES[idx], currencies, paths);
         }
     }
 
@@ -99,7 +92,7 @@ class DataProcessor {
             for (let currencyIdx = 1; currencyIdx < path.length; currencyIdx++) {
                 const price = currencies[path[currencyIdx - 1]][path[currencyIdx]];
                 rateWithFee = rateWithFee * price;
-                rateWithFee -= rateWithFee * FEE;
+                rateWithFee -= rateWithFee * this.fee;
                 rate = rate * price;
                 prices.push(price);
             }

@@ -2,6 +2,8 @@ import request from 'request';
 
 const GET_MARKETS_API_URL = 'https://api.binance.com/api/v1/exchangeInfo';
 const GET_MARKET_SUMMARY_API_URL = 'https://api.binance.com/api/v3/ticker/bookTicker';
+const FEE = 0.0005;
+const IGNORE = ['BNB'];
 
 export default class BinanceReader {
     readMarket(callBack) {
@@ -15,7 +17,8 @@ export default class BinanceReader {
                         BaseCurrency: item.quoteAsset,
                         MarketName: item.symbol
                     };
-            });
+                })
+                .filter(market => !(IGNORE.includes(market.MarketCurrency) || IGNORE.includes(market.BaseCurrency)));
 
             callBack(mappedData, error || handledServerError);
         });
@@ -35,5 +38,9 @@ export default class BinanceReader {
 
             callBack(mappedData, error || handledServerError);
         });
+    }
+
+    static get fee() {
+        return FEE;
     }
 }
