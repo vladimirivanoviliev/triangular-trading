@@ -1,30 +1,14 @@
 //import Reader from './readers/bittrex';
 import Reader from './readers/binannce';
-//import ThreadPool from './threadPool';
 import DataProcessor from './dataProcessor';
 
-const DEFAULT_INTERVAL_MS = 2000;
+const DEFAULT_INTERVAL_MS = 150;
 
 export default class ReaderServer {
     constructor() {
         this._reader = new Reader();
         this._exited = false;
         this._marketData;
-        // this._threadPool = new ThreadPool(4, (summary) => { this._onSummaryProcessed(summary); });
-
-
-        //message queue
-        //worker pipeline
-
-        ///TODO:
-        //1. When to check for new items in queue:
-        //   - when item pushed to queue (handle first item)
-        //   - when worker finishes work (handle all workers are busy)
-        //2. When to check pipeline for last item is finished?
-        //   - when worker finishes work
-        //3. When to add / remove worker from free list
-        //   - add worker to free list on finish work
-        //   - remove worker from free list when start work
     }
 
     _onSummaryProcessed(summary) {
@@ -43,10 +27,13 @@ export default class ReaderServer {
 
                 setTimeout(this.start, DEFAULT_INTERVAL_MS);
             } else {
+                //TODO: time to calc - 10sec on mobile i7, binance
                 this.processMarketData(marketDataResponse);
-
                 this._readerInterval = setInterval(() => {
-                    this._reader.readSummaries((data) => {this.processSummaryData(data);});
+                    this._reader.readSummaries((data) => {
+                        //TODO: time to calc: 300ms on mobile i7, binance
+                        this.processSummaryData(data);
+                    });
                 }, DEFAULT_INTERVAL_MS);
             }
         });
@@ -71,16 +58,10 @@ export default class ReaderServer {
             return;
         }
 
-        const processedData = this._dataProcessor.processSummaries(summaryResponse);
-
-        console.log('>market summary calculated..')
-        console.log(processedData.map(item => item.path + ' ' + item.rate + ' ' + item.rateWithFee).join('\n'));
-        console.log(processedData.length);
-
-
-        // this._threadPool.addWork({
-        //     summaries: summaryResponse,
-        //     markets: this._marketData
-        // });
+        this._dataProcessor.processSummaries(summaryResponse, 5, (processedData) => {
+            console.log('>market summary calculated..');
+            console.log(processedData.map(item => item.path + ' ' + item.rate + ' ' + item.rateWithFee).join('\n'));
+            console.log(processedData.length);
+        });
     }
 }

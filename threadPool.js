@@ -1,16 +1,15 @@
 import DataProcessorWorker from './dataProcessorWorker';
 
 export default class ThreadPool {
-    constructor(numberOfThreads, onWorkDone) {
+    constructor(numberOfThreads) {
         this._threadPool = {};
-        this._onWorkDone = onWorkDone;
         this._executionPipeline = [];
 
         for (let i = 0; i < numberOfThreads; i++) {
             this._threadPool[i] = {
                 worker: new DataProcessorWorker({
                     id: i,
-                    onMessage: this._onThreadMessage
+                    onMessage: (message, id) => {this._onThreadMessage(message, id);}
                 }),
                 idle: true
             };
@@ -40,17 +39,23 @@ export default class ThreadPool {
 
         work.threadId = threadId;
         thread.idle = false;
-        thread.worker.postMessage(work.params);
+        thread.worker.postMessage(JSON.stringify(work.params));
     }
 
     _releaseReadyItems() {
-        const firstNotReadyIndex = this._executionPipeline.findIndex(item => !item.response);
+        let firstNotReadyIndex = this._executionPipeline.findIndex(item => !item.response);
+
+        if (firstNotReadyIndex === -1) {
+            firstNotReadyIndex = this._executionPipeline.length;
+        }
 
         if (firstNotReadyIndex > 0) {
             const readyItems = this._executionPipeline.splice(0, firstNotReadyIndex + 1);
 
+            console.log(`Releasing threads: ${readyItems.length}, queue depth: ${this._executionPipeline.length}`);
+
             readyItems.forEach(item => {
-                this._onWorkDone(item.response);
+                item.callback(item.response);
             });
         }
     }
@@ -58,9 +63,8 @@ export default class ThreadPool {
     _onThreadMessage(message, id) {
         const currentThread = this._threadPool[id];
         currentThread.idle = true;
-
-        const currentItem = this._executionPipeline.find(item => item.threadId === id);
-        currentItem.response = message;
+        const currentItem = this._executionPipeline.find(item => item.threadId == id);
+        currentItem.response = message.data;
 
         this._releaseReadyItems();
         this._assignThread(id);
@@ -69,6 +73,7 @@ export default class ThreadPool {
     addWork(work) {
         this._executionPipeline.push({
             params: work,
+            callback: work.callback,
             response: null,
             threadId: null
         });
