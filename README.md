@@ -8,9 +8,10 @@ Nagle’s algorithm combines several small packets into a single, larger packet 
 
 To implement this tweak, modify the following registry keys.
 
-HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{NIC-id}
+### HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{NIC-id}
+
 For the {NIC-id}, look for the one with your IP address listed. Under this {NIC-id} key, create the following DWORD value:
 
-TcpAckFrequency and set it to 1 to disable “nagling” for gaming.
-TCPNoDelay and set it also to 1 to disable “nagling”
-TcpDelAckTicks and set it to 0
+- TcpAckFrequency and set it to 1 to disable “nagling” for gaming.
+- TCPNoDelay and set it also to 1 to disable “nagling”
+- TcpDelAckTicks and set it to 0
