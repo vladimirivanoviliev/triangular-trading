@@ -18,7 +18,7 @@ function findPaths(to, currencies, allPaths) {
                     path: path.concat(next).join(','),
                     markets: markets + ',' + currencies[currency][next]
                 });
-            } else if (path.indexOf(next) === -1) {
+            } else if (path.indexOf(next) === -1 && path.length < 3) {
                 paths.push({
                     currency: next,
                     path: path.concat(next),
@@ -39,16 +39,19 @@ function filter(items, predicate) {
 
 function groupCurrencies(markets, summaries) {
     const result = {};
+
     for (let idx = 0; idx < markets.length; idx++) {
         const {MarketCurrency, MarketName, BaseCurrency} = markets[idx];
         if (!result[MarketCurrency]) {
             result[MarketCurrency] = {};
         }
         result[MarketCurrency][BaseCurrency] = summaries ? summaries[MarketName].Bid : MarketName;
+      //  result[MarketCurrency][BaseCurrency] = summaries ? (summaries[MarketName].Bid + summaries[MarketName].Ask) / 2 : MarketName;
         if (!result[BaseCurrency]) {
             result[BaseCurrency] = [];
         }
 
+        //result[BaseCurrency][MarketCurrency] = summaries ? (1 /  (summaries[MarketName].Bid + summaries[MarketName].Ask) / 2) : MarketName;
         result[BaseCurrency][MarketCurrency] = summaries ? (1 / summaries[MarketName].Ask) : MarketName;
     }
 
@@ -60,11 +63,13 @@ const descendingComparer = (a, b) => b.rate - a.rate;
 
 class DataProcessor {
     constructor(markets, options = {}) {
-        this.startCurrencies = options.startCurrencies;
-        this.fee = options.fee;
-        this.markets = markets;
-        this.initPaths();
-        console.log(`> ${ this.paths.length} paths calculated..`);
+      //  this.startCurrencies = options.startCurrencies;
+       // this.fee = options.fee;
+        this.fee = 0.0025;
+        //this.markets = markets;
+        //this.marketsMap = mapSummaries(markets);
+        //this.initPaths();
+        //console.log(`> ${ this.paths.length} paths calculated..`);
     }
 
     initPaths() {
@@ -105,6 +110,76 @@ class DataProcessor {
         result.sort(descendingComparer);
 
         return result.slice(0, max);
+    }
+
+    orderType(from, market) {
+        const summary = this.marketsMap[market];
+
+        if (from === summary.BaseCurrency) {
+            return 'sell';
+        }
+
+        return 'buy';
+    }
+
+    getOrders(markets, initialQuantity, orderTypes) {
+        let paths = [{ orders: [], quantity: initialQuantity }];
+
+        const getQuantity = (marketIdx, { Quantity, Rate }, isStart) => {
+            const calculated = Rate * Quantity;
+            if (orderTypes[marketIdx] === 'buy') {
+                return isStart ? Quantity : calculated;
+            }
+
+            return isStart ? calculated : Quantity;
+        };
+
+        for (let marketIdx = 0; marketIdx < markets.length; marketIdx++) {
+            const orders = markets[marketIdx];
+            let sumStartCurrency = 0;
+            let sumOrdersQuantity = 0;
+
+            let marketPaths = [];
+
+            for (let idx = 0; idx < orders.length; idx++) {
+                const startQuantity = getQuantity(marketIdx, orders[idx], true);
+                const orderQuantity = getQuantity(marketIdx, orders[idx], false);
+
+                const orderPaths = [];
+
+                for (let pathIdx = 0; pathIdx < paths.length; pathIdx++) {
+                    const path = paths[pathIdx];
+
+                    if (sumStartCurrency + startQuantity <= path.quantity) {
+                        const orderPath = { orders: path.orders.concat(idx), quantity: sumOrdersQuantity + orderQuantity };
+
+                        orderPath.initialQuantity = path.initialQuantity || sumStartCurrency + startQuantity;
+
+                        orderPaths.push(orderPath);
+                    } else if (sumStartCurrency < path.quantity) {
+                        const leftQuantity = path.quantity - sumStartCurrency;
+
+                        const orderPath = { orders: path.orders.concat(idx), quantity: sumOrdersQuantity + getQuantity(marketIdx, { Quantity: leftQuantity, Rate: orders[idx].Rate }, false)};
+
+                        orderPath.initialQuantity = path.initialQuantity || sumStartCurrency + leftQuantity;
+
+                        orderPaths.push(orderPath);
+                    }
+                }
+
+                sumStartCurrency += startQuantity;
+                sumOrdersQuantity += orderQuantity;
+                marketPaths = marketPaths.concat(orderPaths);
+
+                if (!orderPaths.length) {
+                    break;
+                }
+            }
+
+            paths = marketPaths;
+        }
+
+        return paths;
     }
 }
 

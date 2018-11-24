@@ -40,7 +40,7 @@ export default class BinanceReader {
         });
     }
 
-    static get fee() {
+    get fee() {
         return FEE;
     }
 }
