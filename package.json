@@ -12,7 +12,8 @@
   },
   "scripts": {
     "test": "babel-node --inspect-brk index.js",
-    "start": "babel-node index.js"
+    "start": "babel-node index.js",
+    "log": "babel-node index.js >> log.txt"
   },
   "author": "Vladimir Iliev, Daniel Karadachki",
   "license": "GPL-3.0"

@@ -41,18 +41,20 @@ function groupCurrencies(markets, summaries) {
     const result = {};
 
     for (let idx = 0; idx < markets.length; idx++) {
-        const {MarketCurrency, MarketName, BaseCurrency} = markets[idx];
+        const { MarketCurrency, MarketName, BaseCurrency } = markets[idx];
         if (!result[MarketCurrency]) {
             result[MarketCurrency] = {};
         }
-        result[MarketCurrency][BaseCurrency] = summaries ? summaries[MarketName].Bid : MarketName;
-      //  result[MarketCurrency][BaseCurrency] = summaries ? (summaries[MarketName].Bid + summaries[MarketName].Ask) / 2 : MarketName;
+        // result[MarketCurrency][BaseCurrency] = summaries ? summaries[MarketName].Bid : MarketName;
+        // result[MarketCurrency][BaseCurrency] = summaries ? summaries[MarketName].Ask : MarketName;
+        result[MarketCurrency][BaseCurrency] = summaries ? (summaries[MarketName].Bid + summaries[MarketName].Ask) / 2 : MarketName;
         if (!result[BaseCurrency]) {
             result[BaseCurrency] = [];
         }
 
-        //result[BaseCurrency][MarketCurrency] = summaries ? (1 /  (summaries[MarketName].Bid + summaries[MarketName].Ask) / 2) : MarketName;
-        result[BaseCurrency][MarketCurrency] = summaries ? (1 / summaries[MarketName].Ask) : MarketName;
+        result[BaseCurrency][MarketCurrency] = summaries ? (1 / (summaries[MarketName].Bid + summaries[MarketName].Ask) / 2) : MarketName;
+        // result[BaseCurrency][MarketCurrency] = summaries ? (1 / summaries[MarketName].Ask) : MarketName;
+        //result[BaseCurrency][MarketCurrency] = summaries ? (1 / summaries[MarketName].Bid) : MarketName;
     }
 
     return result;
@@ -63,13 +65,13 @@ const descendingComparer = (a, b) => b.rate - a.rate;
 
 class DataProcessor {
     constructor(markets, options = {}) {
-      //  this.startCurrencies = options.startCurrencies;
-       // this.fee = options.fee;
-        this.fee = 0.0025;
-        //this.markets = markets;
-        //this.marketsMap = mapSummaries(markets);
-        //this.initPaths();
-        //console.log(`> ${ this.paths.length} paths calculated..`);
+        this.startCurrencies = options.startCurrencies;
+        this.fee = options.fee;
+        // this.fee = 0.0025;
+        this.markets = markets;
+        this.marketsMap = mapSummaries(markets);
+        this.initPaths();
+        console.log(`> ${this.paths.length} paths calculated..`);
     }
 
     initPaths() {
@@ -77,7 +79,7 @@ class DataProcessor {
         const currencies = groupCurrencies(this.markets);
         filter(currencies, (currency) => Object.keys(currency).length > 1);
 
-        const START_CURRENCIES = this.startCurrencies  || Object.keys(currencies);
+        const START_CURRENCIES = this.startCurrencies || Object.keys(currencies);
 
         for (let idx = 0; idx < START_CURRENCIES.length; idx++) {
             findPaths(START_CURRENCIES[idx], currencies, paths);
@@ -103,7 +105,7 @@ class DataProcessor {
             }
 
             if (rateWithFee > 1) {
-                result.push({ path: allPaths[idx].path, rateWithFee: rateWithFee, rate: rate, markets: allPaths[idx].markets, prices: prices});
+                result.push({ path: allPaths[idx].path, rateWithFee: rateWithFee, rate: rate, markets: allPaths[idx].markets, prices: prices });
             }
         }
 
@@ -123,7 +125,7 @@ class DataProcessor {
     }
 
     getOrders(markets, initialQuantity, orderTypes) {
-        let paths = [{ orders: [], quantity: initialQuantity }];
+        let paths = [{ orders: [], quantity: initialQuantity, prices: [] }];
 
         const getQuantity = (marketIdx, { Quantity, Rate }, isStart) => {
             const calculated = Rate * Quantity;
@@ -134,16 +136,24 @@ class DataProcessor {
             return isStart ? calculated : Quantity;
         };
 
+        const getRate = (marketIdx, Rate) => {
+            return orderTypes[marketIdx] === 'buy' ? Rate : 1 / Rate;
+        };
+
         for (let marketIdx = 0; marketIdx < markets.length; marketIdx++) {
             const orders = markets[marketIdx];
             let sumStartCurrency = 0;
             let sumOrdersQuantity = 0;
+            let avrgRate = 1;
 
             let marketPaths = [];
 
             for (let idx = 0; idx < orders.length; idx++) {
-                const startQuantity = getQuantity(marketIdx, orders[idx], true);
-                const orderQuantity = getQuantity(marketIdx, orders[idx], false);
+                const order = orders[idx];
+                const startQuantity = getQuantity(marketIdx, order, true);
+                const orderQuantity = getQuantity(marketIdx, order, false);
+                const rate = getRate(marketIdx, order.Rate);
+                avrgRate = (sumStartCurrency * avrgRate + startQuantity * rate) / (sumStartCurrency + startQuantity);
 
                 const orderPaths = [];
 
@@ -153,15 +163,15 @@ class DataProcessor {
                     if (sumStartCurrency + startQuantity <= path.quantity) {
                         const orderPath = { orders: path.orders.concat(idx), quantity: sumOrdersQuantity + orderQuantity };
 
-                        orderPath.initialQuantity = path.initialQuantity || sumStartCurrency + startQuantity;
+                        orderPath.prices = path.prices.concat(avrgRate);
 
                         orderPaths.push(orderPath);
                     } else if (sumStartCurrency < path.quantity) {
                         const leftQuantity = path.quantity - sumStartCurrency;
+                        const leftOrderQuantity = orderTypes[marketIdx] === 'sell' ? leftQuantity * (1 / orders[idx].Rate) : leftQuantity * orders[idx].Rate;
 
-                        const orderPath = { orders: path.orders.concat(idx), quantity: sumOrdersQuantity + getQuantity(marketIdx, { Quantity: leftQuantity, Rate: orders[idx].Rate }, false)};
-
-                        orderPath.initialQuantity = path.initialQuantity || sumStartCurrency + leftQuantity;
+                        const orderPath = { orders: path.orders.concat(idx), quantity: sumOrdersQuantity + leftOrderQuantity };
+                        orderPath.prices = path.prices.concat((sumStartCurrency * avrgRate + leftQuantity * rate) / (sumStartCurrency + leftQuantity));
 
                         orderPaths.push(orderPath);
                     }
@@ -178,9 +188,25 @@ class DataProcessor {
 
             paths = marketPaths;
         }
+        const positive = [];
+        for (let idx = 0; idx < paths.length; idx++) {
+            const path = paths[idx];
+            const prices = path.prices;
+            let quantity = path.quantity;
 
-        return paths;
+            for (let priceIdx = prices.length - 1; priceIdx >= 0; priceIdx--) {
+                quantity = quantity * (1 / prices[priceIdx]);
+            }
+            path.rate = path.quantity / quantity;
+            path.initialQuantity = quantity;
+            if (path.quantity > quantity) {
+                positive.push(path);
+            }
+        }
+
+        return positive;
     }
 }
+
 
 export default DataProcessor;

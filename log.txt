@@ -1,0 +1,17 @@
+{ _: [], help: false, version: false, '$0': 'index.js' }
+>market data saved..
+> 410 paths calculated..
+>market summary calculated.. 0
+
+>market summary calculated.. 0
+
+>market summary calculated.. 0
+
+>market summary calculated.. 0
+
+>market summary calculated.. 0
+
+>market summary calculated.. 0
+
+>market summary calculated.. 0
+

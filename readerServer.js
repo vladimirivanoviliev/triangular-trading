@@ -36,9 +36,9 @@ export default class ReaderServer {
     }
 
     start() {
-        this.processMarketData();
-        this.test();
-        return;
+    //    this.processMarketData();
+    //    this.test();
+    //    return;
 
         if (this._exited) {
             return;
@@ -53,11 +53,11 @@ export default class ReaderServer {
             } else {
                 this.processMarketData(marketDataResponse);
 
-                this._reader.readSummaries((data) => {this.processSummaryData(data);});
-                // this._readerInterval = setInterval(() => {
+         //       this._reader.readSummaries((data) => {this.processSummaryData(data);});
+                 this._readerInterval = setInterval(() => {
 
-                    // this._reader.readSummaries((data) => {this.processSummaryData(data);});
-                // }, DEFAULT_INTERVAL_MS);
+                     this._reader.readSummaries((data) => {this.processSummaryData(data);});
+                 }, DEFAULT_INTERVAL_MS);
             }
         });
     }
@@ -75,32 +75,32 @@ export default class ReaderServer {
             startCurrencies: this.startCurrencies
         });
 
-        this._dataProcessor.marketsMap = {
-            'USDT-BTC': {
-                "MarketCurrency": "BTC",
-                "BaseCurrency": "USDT",
-                "MarketCurrencyLong": "Bitcoin",
-                "BaseCurrencyLong": "Tether",
-                "MinTradeSize": 0.00046083,
-                "MarketName": "USDT-BTC"
-            },
-            "USDT-BCH": {
-                "MarketCurrency": "BCH",
-                "BaseCurrency": "USDT",
-                "MarketCurrencyLong": "Bitcoin Cash (ABC)",
-                "BaseCurrencyLong": "Tether",
-                "MinTradeSize": 0.00501305,
-                "MarketName": "USDT-BCH"
-            },
-            "BTC-BCH": {
-                "MarketCurrency": "BCH",
-                "BaseCurrency": "BTC",
-                "MarketCurrencyLong": "Bitcoin Cash (ABC)",
-                "BaseCurrencyLong": "Bitcoin",
-                "MinTradeSize": 0.00271400,
-                "MarketName": "BTC-BCH"
-            }
-        };
+        // this._dataProcessor.marketsMap = {
+        //     'USDT-BTC': {
+        //         "MarketCurrency": "BTC",
+        //         "BaseCurrency": "USDT",
+        //         "MarketCurrencyLong": "Bitcoin",
+        //         "BaseCurrencyLong": "Tether",
+        //         "MinTradeSize": 0.00046083,
+        //         "MarketName": "USDT-BTC"
+        //     },
+        //     "USDT-BCH": {
+        //         "MarketCurrency": "BCH",
+        //         "BaseCurrency": "USDT",
+        //         "MarketCurrencyLong": "Bitcoin Cash (ABC)",
+        //         "BaseCurrencyLong": "Tether",
+        //         "MinTradeSize": 0.00501305,
+        //         "MarketName": "USDT-BCH"
+        //     },
+        //     "BTC-BCH": {
+        //         "MarketCurrency": "BCH",
+        //         "BaseCurrency": "BTC",
+        //         "MarketCurrencyLong": "Bitcoin Cash (ABC)",
+        //         "BaseCurrencyLong": "Bitcoin",
+        //         "MinTradeSize": 0.00271400,
+        //         "MarketName": "BTC-BCH"
+        //     }
+        // };
     }
 
     test() {
@@ -117,10 +117,11 @@ export default class ReaderServer {
             orderTypes.push(type);
         }
 
+        console.log(item);
+
         const startQuantity = 3;
         let quantity = startQuantity;//this.startCurrencies[0].quantity;
 
-        debugger;
         const allOrders = this._dataProcessor.getOrders(Orders, startQuantity, orderTypes);
         console.log(allOrders);
     }
@@ -133,7 +134,7 @@ export default class ReaderServer {
 
         const processedData = this._dataProcessor.processSummaries(summaryResponse);
 
-        console.log('>market summary calculated..')
+        console.log('>market summary calculated..', processedData.length);
         console.log(processedData.map(item => item.path + ' ' + item.rate + ' ' + item.rateWithFee).join('\n'));
 
         // console.log(processedData.length);
@@ -157,9 +158,12 @@ export default class ReaderServer {
             let quantity = startQuantity;//this.startCurrencies[0].quantity;
 
             Promise.all(promises).then(result => {
-                debugger;
-                const allOrders = this._dataProcessor.getOrders(result, startQuantity, orderTypes);
-                console.log(allOrders);
+               const allOrders = this._dataProcessor.getOrders(result, startQuantity, orderTypes);
+               if (allOrders.length) {
+                   console.log('KOR');
+               }
+               console.log(allOrders);
+               console.log(new Array(100).join('-'));
             });
         }
 
